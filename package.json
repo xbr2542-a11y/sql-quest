@@ -14,15 +14,13 @@
     "test": "node scripts/test-judge.mjs",
     "smoke": "node scripts/ssr-smoke.mjs",
     "verify:alt": "node scripts/verify-alternatives.mjs",
-    "verify:variant": "node scripts/verify-variants.mjs"
-,
-    "test:review": "node scripts/test-review.mjs"
-,
-    "test:syntax": "node scripts/test-syntax.mjs"
-,
-    "test:symbols": "node scripts/test-symbols.mjs"
-,
+    "verify:variant": "node scripts/verify-variants.mjs",
+    "test:review": "node scripts/test-review.mjs",
+    "test:syntax": "node scripts/test-syntax.mjs",
+    "test:symbols": "node scripts/test-symbols.mjs",
     "verify:lesson": "node scripts/verify-lessons.mjs"
+,
+    "qrcode": "node scripts/make-qrcode.mjs"
   },
   "dependencies": {
     "@codemirror/lang-sql": "^6.8.0",
@@ -34,6 +32,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "playwright-core": "^1.63.0",
+    "qrcode": "^1.5.4",
     "vite": "^6.0.7"
   }
 }
