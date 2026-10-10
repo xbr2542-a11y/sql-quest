@@ -4,6 +4,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -369,10 +370,15 @@ sql.push(insert('coupons', ['coupon_id','user_id','coupon_type','amount','used',
 sql.push('COMMIT;')
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true })
-fs.writeFileSync(OUT, sql.join('\n\n'), 'utf8')
+const text = sql.join('\n\n')
+fs.writeFileSync(OUT, text, 'utf8')
+// 再存一份 gzip：托管平台（如 GitHub Pages）不会压缩 .sql，
+// 浏览器直接下 796KB 太慢，这里压到约 120KB 由前端解压。
+fs.writeFileSync(`${OUT}.gz`, zlib.gzipSync(text, { level: 9 }))
 
 const stat = fs.statSync(OUT)
+const gzStat = fs.statSync(`${OUT}.gz`)
 console.log('seed.sql 生成完成')
 console.log(`  用户 ${users.length} / 商品 ${products.length} / 订单 ${orders.length} / 明细 ${orderItems.length}`)
 console.log(`  支付 ${payments.length} / 退款 ${refunds.length} / 物流 ${shipments.length} / 事件 ${events.length} / 优惠券 ${coupons.length}`)
-console.log(`  文件大小 ${(stat.size / 1024).toFixed(0)} KB`)
+console.log(`  文件大小 ${(stat.size / 1024).toFixed(0)} KB，压缩后 ${(gzStat.size / 1024).toFixed(0)} KB`)

@@ -3,15 +3,41 @@ import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
 
 let cached = null
 
+/**
+ * 取练习数据：优先下 gzip 版（约 120KB）在浏览器里解压，失败再退回未压缩版（约 796KB）。
+ * GitHub Pages 之类的静态托管不会压缩 .sql，直接下 796KB 在手机上很慢。
+ */
+async function loadSeedSql() {
+  const base = new URL(import.meta.env.BASE_URL, document.baseURI)
+  if (typeof DecompressionStream === 'function') {
+    try {
+      const res = await fetch(new URL('seed.sql.gz', base).href)
+      if (res.ok) {
+        const buf = await res.arrayBuffer()
+        const bytes = new Uint8Array(buf)
+        // 服务器可能已经加了 Content-Encoding: gzip（浏览器会透明解压），
+        // 也可能原样下发 gzip。看文件头判断，两种情况都能处理。
+        const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
+        const text = isGzip
+          ? await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+          : new TextDecoder().decode(bytes)
+        if (text && text.length > 1000) return text
+      }
+    } catch {
+      /* 落到未压缩版本 */
+    }
+  }
+  const res = await fetch(new URL('seed.sql', base).href)
+  if (!res.ok) throw new Error(`练习数据加载失败（HTTP ${res.status}）`)
+  return res.text()
+}
+
 export function getDb() {
   if (!cached) {
     cached = initSqlJs({ locateFile: () => wasmUrl }).then(async (SQL) => {
       // 种子数据放在 public/ 里按需拉取，不进主包（否则首屏要多下 700 多 KB）。
       // 用 BASE_URL 拼路径，这样部署到任意子目录都能找到。
-      const url = new URL('seed.sql', new URL(import.meta.env.BASE_URL, document.baseURI)).href
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`种子数据加载失败（HTTP ${res.status}）`)
-      const seedSql = await res.text()
+      const seedSql = await loadSeedSql()
       const db = new SQL.Database()
       db.run(seedSql)
       return db
