@@ -1,0 +1,35 @@
+{
+  "name": "sql-quest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:local": "vite --host 127.0.0.1",
+    "dev:lan": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "seed": "node scripts/gen-seed.mjs",
+    "check": "node scripts/check-levels.mjs",
+    "test": "node scripts/test-judge.mjs",
+    "smoke": "node scripts/ssr-smoke.mjs",
+    "verify:alt": "node scripts/verify-alternatives.mjs",
+    "verify:variant": "node scripts/verify-variants.mjs"
+,
+    "test:review": "node scripts/test-review.mjs"
+,
+    "test:syntax": "node scripts/test-syntax.mjs"
+  },
+  "dependencies": {
+    "@codemirror/lang-sql": "^6.8.0",
+    "@uiw/react-codemirror": "^4.23.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.13.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "playwright-core": "^1.63.0",
+    "vite": "^6.0.7"
+  }
+}
