@@ -1,0 +1,48 @@
+# 推到 main 分支就自动构建并发布到 GitHub Pages。
+# 说明：GitHub Pages 在国内访问不稳定（可能很慢或打不开），
+# 如果需要国内稳定访问，请改用国内静态托管 + 已备案域名，详见 DEPLOY.md。
+name: 构建并部署到 GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # 生成练习数据（固定随机种子，结果可复现）
+      - run: npm run seed
+      - run: npm run build
+      # 部署前先跑一遍自检，避免把坏掉的版本发上去
+      - run: npm run test
+      - run: npm run check
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
