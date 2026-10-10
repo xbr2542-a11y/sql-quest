@@ -13,6 +13,8 @@ npm run dev:lan  # 同上，但允许同一 Wi-Fi 的手机访问（终端会打
 
 想部署到公网给别人玩，见 [DEPLOY.md](DEPLOY.md)。
 
+项目已建立 git 版本管理（每次改动都能对比、回滚），改动后的自检命令见 DEPLOY.md 第八节。
+
 其他命令：
 
 ```bash
