@@ -19,9 +19,50 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f6df6'/%3E%3Cellipse cx='16' cy='10' rx='8' ry='3.2' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M8 10v12c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2V10' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M8 16c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
     />
     <title>数据部新人 · 用游戏学 SQL</title>
+    <style>
+      /* 首屏启动页：内联样式，不依赖任何外部文件，脚本没下载完也能立刻显示 */
+      .boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        gap:14px;background:#f4f6fa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+        color:#1f2937;padding:24px;text-align:center;z-index:9}
+      .boot-badge{width:64px;height:64px;border-radius:18px;background:linear-gradient(150deg,#4a83ff,#1f57d6);
+        display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(47,109,246,.28)}
+      .boot-title{font-size:17px;font-weight:600;letter-spacing:.3px}
+      .boot-bar{width:150px;height:4px;border-radius:99px;background:#dfe6f3;overflow:hidden}
+      .boot-bar i{display:block;width:45%;height:100%;border-radius:99px;background:#2f6df6;animation:bootRun 1.15s ease-in-out infinite}
+      @keyframes bootRun{0%{transform:translateX(-100%)}100%{transform:translateX(235%)}}
+      .boot-tip{font-size:13px;color:#6b7280;max-width:22em;line-height:1.7}
+      .boot-slow{display:none;font-size:13px;color:#b45309;max-width:24em;line-height:1.7}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot">
+        <div class="boot-badge">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <ellipse cx="16" cy="9" rx="9" ry="3.6" stroke="#fff" stroke-width="2" />
+            <path d="M7 9v13c0 2 4 3.6 9 3.6s9-1.6 9-3.6V9" stroke="#fff" stroke-width="2" />
+            <path d="M7 15.5c0 2 4 3.6 9 3.6s9-1.6 9-3.6" stroke="#fff" stroke-width="2" />
+          </svg>
+        </div>
+        <div class="boot-title">数据部新人 · 用游戏学 SQL</div>
+        <div class="boot-bar"><i></i></div>
+        <div class="boot-tip" id="bootTip">正在准备练习数据库……首次打开需要几秒，之后秒开。</div>
+        <div class="boot-slow" id="bootSlow">
+          网络看起来有点慢。再等一会儿就好；如果超过 20 秒还没反应，请刷新页面，或换个网络（WiFi / 手机流量）再试。
+        </div>
+        <noscript>
+          <div class="boot-tip">这个练习需要一个能运行 JavaScript 的浏览器，请换用 Chrome、Edge 或手机自带浏览器打开。</div>
+        </noscript>
+      </div>
+      <script>
+        setTimeout(function () {
+          var tip = document.getElementById('bootTip')
+          var slow = document.getElementById('bootSlow')
+          if (tip) tip.style.display = 'none'
+          if (slow) slow.style.display = 'block'
+        }, 8000)
+      </script>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
