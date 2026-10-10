@@ -40,7 +40,7 @@ function aliasAdvice(want, got) {
   return null
 }
 
-export function judge(expected, actual, level) {
+export function judge(expected, actual, level, playerSql = '') {
   const step = level.tolerance ?? 0.005
   const expKeys = makeKeys(expected.rows, step)
   const actKeys = makeKeys(actual.rows, step)
@@ -61,6 +61,20 @@ export function judge(expected, actual, level) {
         kind: 'columns',
         reason: `你只返回了 ${actCols.length} 列，这一关要求 ${expCols.length} 列。${which ? '\n' + which : ''}`,
         tip: `要求的列是：${list(expCols)}（按这个顺序）。`
+      }
+    }
+    // 用了星号导致列数变多 —— 这是新手最典型的一类错误，单独说清楚
+    const usedStar = /SELECT\s+\*/i.test(String(playerSql))
+    if (usedStar && expCols.length < actCols.length) {
+      return {
+        pass: false,
+        kind: 'columns',
+        reason:
+          `你写的是 SELECT * ，星号的意思是「所有列」——所以它把整张表的 ${actCols.length} 列都要了回来。\n` +
+          `这一关只要 ${expCols.length} 列。`,
+        tip:
+          `把星号换成列名，中间用英文逗号隔开。这一关要的是：${list(expCols)}。\n` +
+          '记住这个区别：全部列都要才写 *，只要其中几列就必须把列名写出来。'
       }
     }
     return {

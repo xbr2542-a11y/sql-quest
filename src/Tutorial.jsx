@@ -93,7 +93,12 @@ export default function Tutorial({ db, onDone, onSkip }) {
     {
       target: '[data-tour="editorzone"]',
       title: '第二个词：FROM products',
-      body: 'SELECT 后面要先说「看哪些列」。这一课看全部列，所以先打一个星号 *。\n\n接着打第二个词 FROM——它回答第二个问题：「从哪张表拿」。这一课要看商品，表名就是左边列表里的 products（点左边的字段名可以插进来）。',
+      body:
+        'SELECT 后面要先说「看哪些列」。这里有个岔路口：\n' +
+        '· 全部列都要 → 写一个星号 *（它就是「所有列」的简写）\n' +
+        '· 只要其中几列 → 把列名一个个写出来，中间用英文逗号隔开\n\n' +
+        '这一课看全部列，所以先打一个星号 *。等下一关只要几列的时候，就不能写星号了，要把列名写出来——这个区别后面会反复用到。\n\n' +
+        '接着打第二个词 FROM——它回答第二个问题：「从哪张表拿」。这一课要看商品，表名就是左边列表里的 products（点左边的字段名可以插进来）。',
       action: true,
       canClear: true,
       actionText: '把 FROM products 补上，整句是 SELECT * FROM products',

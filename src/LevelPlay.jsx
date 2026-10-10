@@ -10,6 +10,7 @@ import { STORY } from './story.js'
 import { BASIC_BLOCKS, lintSql, literalsOf } from './sqlMeta.js'
 import { thinkingSteps } from './why.js'
 import { analyzeSyntax, syntaxTips } from './syntax.js'
+import { symbolsForLevel, primarySymbol } from './symbols.js'
 import { ALTERNATIVES } from './alternatives.js'
 import { ObjectTree, ResultTable, SchemaCard, SqlText, Stars, SyntaxNotes, ValueChips } from './ui.jsx'
 import { rankOf, starsFor, rewardFor } from './progress.js'
@@ -83,6 +84,8 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
   const values = React.useMemo(() => literalsOf(level.referenceSql), [level.id])
   const alts = ALTERNATIVES[level.id] || []
   const tips = React.useMemo(() => syntaxTips(level.referenceSql), [level.id])
+  const syms = React.useMemo(() => symbolsForLevel(level.referenceSql), [level.id])
+  const mainSym = React.useMemo(() => primarySymbol(level.referenceSql), [level.id])
 
   React.useEffect(() => {
     setText('')
@@ -144,7 +147,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
     const exp = expRef.current
     setActual(mine)
     setExpected(exp)
-    const v = judge(exp, mine, level)
+    const v = judge(exp, mine, level, text)
 
     if (v.pass) {
       const stars = starsFor(n, hintsUsed)
@@ -342,6 +345,21 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                   <ValueChips values={values} onPick={insert} />
                 </div>
               )}
+              {mainSym && (
+                <div className="sym-callout" data-testid="symbol-callout">
+                  <span className="sym-char" onClick={() => insert(mainSym.char)} title="点一下插进编辑器">
+                    {mainSym.char}
+                  </span>
+                  <div className="sym-text">
+                    <b>{mainSym.name}</b>：{mainSym.what}
+                    {mainSym.char === '*' && (
+                      <div className="sym-warn">
+                        ⚠️ 只有「全部列都要」才写它。只要其中几列，就把列名写出来、中间用英文逗号隔开——写了星号会把整张表的列全要回来，判定会说你列数不对。
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {lint.length > 0 && (
@@ -485,9 +503,30 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                   {openWhy === i && (
                     <div className="why-body">
                       <span className="lbl">这一步在做什么</span>
-                      {s.what}
+                      <SqlText text={s.what} />
                       <span className="lbl">为什么必须有它</span>
-                      {s.why}
+                      <SqlText text={s.why} />
+                      {s.branches && (
+                        <div className="why-branches">
+                          {s.branches.map((b) => (
+                            <div
+                              className="branch"
+                              key={b.cond}
+                              onClick={() => insert(b.code)}
+                              title="点一下放进编辑器（记得把中文说明换成真实内容）"
+                            >
+                              <span className="bcond">{b.cond}</span>
+                              <code>{b.code}</code>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {s.choiceNote && (
+                        <div className={'choice-note ' + s.choiceNote.kind}>
+                          <b>这一关呢？</b>
+                          <SqlText text={s.choiceNote.text} />
+                        </div>
+                      )}
                       {s.trap && <div className="trap">⚠️ {s.trap}</div>}
                     </div>
                   )}
@@ -535,6 +574,44 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                   <SyntaxNotes sql={level.sample.replace(/;$/, '')} />
                 </>
               )}
+            </Section>
+
+            <Section
+              title="这些符号是什么意思"
+              icon={<IconBulb width={14} height={14} />}
+              right={<span className="dim" style={{ fontSize: 11.5 }}>{syms.length} 个</span>}
+              testid="symbols"
+              defaultOpen={level.id <= 2}
+            >
+              <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>
+                SQL 里这些特殊字符都是固定的意思，点一下可以直接插进编辑器。
+              </div>
+              {syms.map((s) => (
+                <div className="sym-row" key={s.char}>
+                  <span className="sym-char" onClick={() => insert(s.char)} title="点一下插进编辑器">
+                    {s.char}
+                  </span>
+                  <div className="sym-body">
+                    <div className="sym-name">{s.name}</div>
+                    <div className="sym-line">{s.what}</div>
+                    <div className="sym-line ok">
+                      <b>什么时候写：</b>
+                      <SqlText text={s.when} />
+                    </div>
+                    <div className="sym-line no">
+                      <b>什么时候不写：</b>
+                      <SqlText text={s.whenNot} />
+                    </div>
+                    <div className="sym-code" onClick={() => setText(s.ex.code)} title="点一下放进编辑器">
+                      {s.ex.code}
+                    </div>
+                    <div className="sym-note">{s.ex.note}</div>
+                  </div>
+                </div>
+              ))}
+              <div className="sym-foot">
+                另外两个新手常担心的点：<b>大小写不重要</b>，SELECT 和 select 是一个意思；<b>句子末尾的分号 ; 可写可不写</b>，写了更规范，不写也能跑。
+              </div>
             </Section>
 
             <Section

@@ -100,7 +100,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
     const exp = runQuery(db, variant.referenceSql)
     setActual(mine)
     setExpected(exp)
-    const v = judge(exp, mine, variant)
+    const v = judge(exp, mine, variant, text)
     if (v.pass) {
       setStatus({ type: 'ok', title: '这道过了', detail: '同一类问题换个场景也能做对，说明是真的会了。' })
       setReasons([])

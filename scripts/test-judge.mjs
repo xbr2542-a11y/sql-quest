@@ -24,7 +24,7 @@ const run = (sql) => {
   return { columns: res[res.length - 1].columns, rows: res[res.length - 1].values }
 }
 const lv = (id) => LEVELS.find((l) => l.id === id)
-const check = (playerSql, levelId) => judge(run(lv(levelId).referenceSql), run(playerSql), lv(levelId))
+const check = (playerSql, levelId) => judge(run(lv(levelId).referenceSql), run(playerSql), lv(levelId), playerSql)
 
 let pass = 0
 let fail = 0

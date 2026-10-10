@@ -8,10 +8,20 @@ import { clauseList } from './sqlMeta.js'
 
 const REASON = {
   SELECT: {
-    q: '我要看的到底是什么？',
-    what: 'SELECT 后面写的是「结果表里要有哪几列」。',
-    why: '一张表可能有几十列，你不说要看哪些，数据库要么全给你、要么根本不知道给什么。先把「老板要看到哪几个数字」想清楚，这一句就定了。',
-    trap: '新手常见错误：想写成 WHERE 的条件，其实是在这里筛列。'
+    q: '我要看全部列，还是只看其中几列？',
+    what:
+      'SELECT 后面写你要看的列。这里有一个岔路口：\n' +
+      '　· 全部列都要 → 写一个星号 * （它是「所有列」的简写）\n' +
+      '　· 只要其中几列 → 把列名一个个写出来，中间用英文逗号隔开',
+    why:
+      '一张表有几十列，你不说要看哪些，数据库不知道给什么。关键在于这两个选择不能混：写了星号就是把所有列都要回来，' +
+      '只要三列却写了星号，结果列数对不上，判定会直接不通过。',
+    branches: [
+      { cond: '全部列都要', code: 'SELECT * FROM 表名' },
+      { cond: '只要其中几列', code: 'SELECT 列名, 列名 FROM 表名' }
+    ],
+    trap:
+      '新手的经典坑：在上一关学会了写 *，到这一关还是写 * ——如果这一关只要几列，写星号会把整张表的列全要回来，判定会说「列数不对」。'
   },
   FROM: {
     q: '这些东西放在哪张表里？',
@@ -57,9 +67,50 @@ const REASON = {
   }
 }
 
+/** 数一数 SELECT 后面有几个顶层逗号 —— 用来判断这一关要几列 */
+function countSelectColumns(list) {
+  let depth = 0
+  let commas = 0
+  let quote = false
+  for (const ch of String(list || '')) {
+    if (ch === "'") quote = !quote
+    if (quote) continue
+    if (ch === '(') depth++
+    else if (ch === ')') depth = Math.max(0, depth - 1)
+    else if (ch === ',' && depth === 0) commas++
+  }
+  return commas + 1
+}
+
+/**
+ * 这一关的 SELECT 到底是「全部列」还是「其中几列」——
+ * 从他自己的参考答案推出来，直接写在步骤里，不用玩家猜。
+ */
+function selectChoiceNote(referenceSql) {
+  const m = String(referenceSql || '').match(/SELECT([\s\S]*?)\bFROM\b/i)
+  if (!m) return null
+  const list = m[1].trim()
+  if (/^\*$/.test(list.replace(/\s+/g, ''))) {
+    return { kind: 'all', text: '这一关要的是「整张表的全部列」，所以在 SELECT 后面写星号 * 就够了。' }
+  }
+  const n = countSelectColumns(list)
+  return {
+    kind: 'some',
+    text:
+      `这一关只要 ${n} 列，所以不能写星号——写了星号会把整张表的列都取回来，判定会告诉你列数不对。` +
+      `把这几列的名字写出来，中间用英文逗号隔开。`
+  }
+}
+
 /** 这一关该按什么顺序想，每一步都带「为什么」 */
 export function thinkingSteps(referenceSql) {
+  const note = selectChoiceNote(referenceSql)
   return clauseList(referenceSql)
-    .map((c) => ({ clause: c, ...REASON[c] }))
+    .map((c) => ({
+      clause: c,
+      ...REASON[c],
+      // 只给 SELECT 这一步挂上「这一关怎么选」
+      choiceNote: c === 'SELECT' ? note : null
+    }))
     .filter((s) => s.q)
 }
