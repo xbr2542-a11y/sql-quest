@@ -172,8 +172,14 @@ export function analyzeSyntax(sqlText) {
   const sql = String(sqlText || '')
   const findings = []
   if (!sql.trim()) return findings
-  // pri 越小越靠前：先说他最该动手改的那处
-  const push = (title, detail, pri = 50) => findings.push({ title, detail, pri })
+  /**
+   * 每条错误都要回答三个问题：哪里错、为什么错、怎么改。
+   * snippet 是原文里的片段，界面会拿它在编辑器里标出错误位置。
+   * pri 越小越靠前（先说他最该动手改的那处）。
+   */
+  const push = ({ title, where, why, how, snippet, pri = 50 }) => {
+    findings.push({ title, where, why, how, snippet, pri, detail: [where, why, how].filter(Boolean).join('\n') })
+  }
 
   /* 1. 中文标点：SQLite 报错位置很误导，所以优先说清楚 */
   const cn = sql.match(/[，。；：、（）【】「」“”‘’]/g)
@@ -181,11 +187,14 @@ export function analyzeSyntax(sqlText) {
     const chars = [...new Set(cn)].join(' ')
     const idx = sql.search(/[，。；：、（）【】「」“”‘’]/)
     const around = sql.slice(Math.max(0, idx - 16), idx + 16).replace(/\s+/g, ' ')
-    push(
-      `你打的是中文标点 ${chars}`,
-      `位置在这里：…${around}…\n键盘上按一下 Shift 就能切换中英文输入法。切换成英文之后，逗号才是 ,（英文逗号），引号才是 ' （英文单引号）。`,
-      10
-    )
+    push({
+      title: `你打的是中文标点 ${chars}`,
+      where: `…${around}…`,
+      why: 'SQL 只认英文标点，中文标点会让数据库看不懂这句话。',
+      how: '键盘上按一下 Shift 切换中英文输入法。英文下逗号是 , 引号是 \' 括号是 ( )',
+      snippet: cn[0],
+      pri: 10
+    })
   }
 
   const parsed = parseClauses(sql)
@@ -200,18 +209,40 @@ export function analyzeSyntax(sqlText) {
     // 连着两个 AS
     const doubleAs = raw.match(/\bAS\s+AS\b/i)
     if (doubleAs) {
-      push('这里连着写了两个 AS', `你写的是：${quote(raw.match(/.{0,18}\bAS\s+AS\b.{0,18}/i)?.[0] || 'AS AS')}\n一个别名只要一个 AS：列名 AS 别名。`, 60)
+      const frag = raw.match(/.{0,18}\bAS\s+AS\b.{0,18}/i)?.[0] || 'AS AS'
+      push({
+        title: '这里连着写了两个 AS',
+        where: `你写的是：${quote(frag)}`,
+        why: '一个别名只需要一个 AS。',
+        how: '写成「列名 AS 别名」，只留一个 AS。',
+        snippet: frag.trim(),
+        pri: 60
+      })
     }
 
     // 一个 AS 前面没有列名
     const firstWords = wordsTop(parts[0] || '')
     if (firstWords[0] && firstWords[0].toUpperCase() === 'AS') {
-      push('AS 前面少了一个列名', 'AS 的左边必须紧跟一个列名或表达式，右边才是它的别名，比如：name AS product_name。', 60)
+      push({
+        title: 'AS 前面少了一个列名',
+        where: `开头就是 AS：${quote(raw.slice(0, 24))}`,
+        why: 'AS 的左边必须是一个列名，右边才是它的别名。',
+        how: '写成 name AS product_name',
+        snippet: 'AS',
+        pri: 60
+      })
     }
 
     // 末尾多余逗号
     if (/,\s*$/.test(raw)) {
-      push('最后一个列名后面多了逗号', `你写的是：${quote(raw.slice(-24))}\n逗号只写在两列之间，最后一列后面不能再写。`, 60)
+      push({
+        title: '最后一个列名后面多了逗号',
+        where: `你写的是：${quote(raw.slice(-24))}`,
+        why: '逗号只写在两列之间，最后一列后面不能再写。',
+        how: '把最后那个逗号删掉。',
+        snippet: raw.slice(-24).trim(),
+        pri: 60
+      })
     }
 
     if (!doubleAs) {
@@ -221,20 +252,30 @@ export function analyzeSyntax(sqlText) {
         const merged = asCount >= 2 || (asCount === 0 && bare.length >= 2)
         if (merged) {
           const groups = splitMergedColumns(raw, words, asCount) || [raw]
-          push(
-            '列和列之间少了逗号',
-            groups.length > 1
-              ? `你在 SELECT 后面把好几列挤在了一起：\n${groups.map((g) => quote(g)).join('  ')}\n每一列之间要用英文逗号隔开（键盘上字母 M 右边那个键，中文输入法下打出来的是「，」）。改完是这样：\n${groups.join(' , ')}`
-              : `SELECT 后面这一串看起来不止一列：\n${quote(raw)}\n每一列之间要用英文逗号隔开，写成：列名 , 列名 , 列名`,
-            40
-          )
+          push({
+            title: '列和列之间少了逗号',
+            where:
+              groups.length > 1
+                ? `你在 SELECT 后面把好几列挤在了一起：${groups.map((g) => quote(g)).join('  ')}`
+                : `SELECT 后面这一串看起来不止一列：${quote(raw)}`,
+            why: '列与列之间必须有英文逗号，否则数据库会把它们当成一个词。',
+            how:
+              groups.length > 1
+                ? `改成：${groups.join(' , ')}`
+                : '写成：列名 , 列名 , 列名',
+            snippet: groups.length > 1 ? groups[0] + ' ' + (groups[1] || '') : raw,
+            pri: 40
+          })
         } else if (bare.length === 1 && !isKnownColumn(bare[0]) && splitIntoColumns(bare[0]).length >= 2) {
           const cols = splitIntoColumns(bare[0])
-          push(
-            '这一段是几个字段名连在一起了',
-            `你写的是：${quote(bare[0])}\n看起来是把 ${cols.map((c) => quote(c)).join('、')} 连成了一串。字段名之间要用英文逗号隔开：\n${cols.join(' , ')}`,
-            40
-          )
+          push({
+            title: '这一段是几个列名连在一起了',
+            where: `你写的是：${quote(bare[0])}`,
+            why: `看起来是把 ${cols.map((c) => quote(c)).join('、')} 连成了一串。`,
+            how: `列名之间用英文逗号隔开：${cols.join(' , ')}`,
+            snippet: bare[0],
+            pri: 40
+          })
         }
       }
     }
@@ -249,19 +290,24 @@ export function analyzeSyntax(sqlText) {
       const glued = TABLE_NAMES.find((tb) => t.toLowerCase().startsWith(tb + '_'))
       if (glued) {
         const rest = t.slice(glued.length + 1)
-        push(
-          `${quote(t)} 不是表，也不像字段`,
-          `看起来是把表名 ${quote(glued)} 和字段名 ${quote(rest)} 粘在一起了。这两个要分开写：\n表名放在 FROM 后面，字段名放在 SELECT 后面 ——\nSELECT ${rest} FROM ${glued}`,
-          20
-        )
+        push({
+          title: `${quote(t)} 不是表，也不像列名`,
+          where: `FROM 后面写的是：${quote(t)}`,
+          why: `看起来是把表名 ${quote(glued)} 和列名 ${quote(rest)} 粘在一起了。`,
+          how: `两个要分开写——表名放 FROM 后面，列名放 SELECT 后面：SELECT ${rest} FROM ${glued}`,
+          snippet: t,
+          pri: 20
+        })
       } else {
         const guess = near(TABLE_NAMES, t)
-        push(
-          `没有叫 ${quote(t)} 的表`,
-          `库里只有这些表：${TABLE_NAMES.map((x) => quote(x)).join('、')}。` +
-            (guess.length ? `\n你是不是想写 ${guess.map((g) => quote(g)).join(' 或 ')}？` : ''),
-          20
-        )
+        push({
+          title: `没有叫 ${quote(t)} 的表`,
+          where: `FROM 后面写的是：${quote(t)}`,
+          why: `库里只有这些表：${TABLE_NAMES.map((x) => quote(x)).join('、')}`,
+          how: guess.length ? `你是不是想写 ${guess.map((g) => quote(g)).join(' 或 ')}？表名可以从左边列表里点。` : '表名可以从左边列表里点一下插进来。',
+          snippet: t,
+          pri: 20
+        })
       }
     }
     // 表名后面写了不止一个 AS
@@ -269,19 +315,36 @@ export function analyzeSyntax(sqlText) {
     const region = clauseEnd < 0 ? fromWords : fromWords.slice(0, clauseEnd)
     const asInFrom = region.filter((w) => w.toUpperCase() === 'AS').length
     if (asInFrom >= 2) {
-      push(
-        'FROM 后面多了东西',
-        `你在 FROM 后面写了：${quote(region.join(' ').slice(0, 52))}\nFROM 后面只需要表名，最多再跟一个表别名（FROM products AS p）。那些带 AS 的列和别名，应该写在 SELECT 后面，中间用逗号隔开。`,
-        30
-      )
+      push({
+        title: 'FROM 后面多了东西',
+        where: `你在 FROM 后面写了：${quote(region.join(' ').slice(0, 52))}`,
+        why: 'FROM 后面只需要表名，最多再跟一个表别名；带 AS 的列和别名应该写在 SELECT 后面。',
+        how: '把表名留在 FROM 后面，其余列和别名挪到 SELECT 后面，中间用逗号隔开。',
+        snippet: region.slice(1, 4).join(' '),
+        pri: 30
+      })
     }
   } else if (parsed) {
-    push('还缺 FROM', 'SELECT 说的是「要看什么」，还要用 FROM 说明「从哪张表拿」，写法是：SELECT 列名 FROM 表名。', 30)
+    push({
+      title: '还缺 FROM',
+      where: '整句里没有 FROM',
+      why: 'SELECT 只说要看什么，没说从哪张表拿。',
+      how: '在后面补上 FROM 表名，比如 SELECT name FROM products',
+      snippet: 'SELECT',
+      pri: 30
+    })
   }
 
   /* 4. 引号没配对 */
   if ((sql.match(/'/g) || []).length % 2 === 1) {
-    push('单引号没有配对', "文字值要用一对英文单引号包起来，比如 'paid'。这句话里少了一个 '（在英文输入法下打）。", 70)
+    push({
+      title: '单引号没有配对',
+      where: `这句话里的单引号是奇数个：${(sql.match(/'/g) || []).length} 个`,
+      why: "文字值要用一对英文单引号包起来，比如 'paid'。",
+      how: "补上少的那一个 '（英文输入法下打）。",
+      snippet: "'",
+      pri: 70
+    })
   }
 
   return findings.sort((a, b) => a.pri - b.pri).slice(0, 3)

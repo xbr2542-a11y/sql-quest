@@ -6,6 +6,7 @@ import { CM_SCHEMA, TABLES } from './schema.js'
 import { runQuery } from './db.js'
 import { translateError, noResultHint } from './errors.js'
 import { ObjectTree, ResultTable, Stars } from './ui.jsx'
+import { TERMS } from './glossary.js'
 import { ADVANCED_COST, completedCount, pendingItems, rankOf, RANKS } from './progress.js'
 import { IconPlay, IconSpark } from './icons.jsx'
 
@@ -14,7 +15,7 @@ const TABLE_NAMES = TABLES.map((t) => t.name)
 
 /* ---------------- 入职页 ---------------- */
 
-export function Intro({ onPick, onTutorial, hasProgress, tutorialDone }) {
+export function Intro({ onPick, onTutorial, onLessons, hasProgress, tutorialDone, lessonsCount = 0 }) {
   return (
     <div className="page narrow">
       <div className="hero">
@@ -27,20 +28,35 @@ export function Intro({ onPick, onTutorial, hasProgress, tutorialDone }) {
         </p>
       </div>
 
-      {!tutorialDone && (
-        <div className="banner">
-          <IconSpark width={18} height={18} style={{ color: 'var(--brand)' }} />
-          <div className="grow">
-            <div className="t">第一次来？先花两分钟认识这个界面</div>
-            <div className="d">
-              一个交互式小教程：数据库长什么样、SQL 是什么、在哪儿写字、结果从哪看。跟着点四下就会了。
-            </div>
+      <div className="course-card" data-testid="course-card">
+        <div className="cc-main">
+          <div className="cc-tag">零基础从这里开始</div>
+          <h3>基础课 · 14 节短课</h3>
+          <p>
+            从「数据库是什么」讲到 JOIN。每节 1 分钟：先说清楚概念，给一个最小示例，然后你自己写一句——写错会告诉你哪里错、为什么错、怎么改。
+          </p>
+          <div className="chips">
+            <span className="chip">SELECT</span>
+            <span className="chip">FROM / WHERE</span>
+            <span className="chip">ORDER BY / LIMIT</span>
+            <span className="chip">DISTINCT / AS</span>
+            <span className="chip">COUNT / SUM</span>
+            <span className="chip">GROUP BY / HAVING</span>
+            <span className="chip">JOIN</span>
+            <span className="chip">NULL</span>
           </div>
-          <button className="btn primary" onClick={onTutorial}>
-            开始入门教程
-          </button>
         </div>
-      )}
+        <div className="cc-side">
+          <button className="btn primary lg" onClick={onLessons}>
+            {lessonsCount > 0 ? `继续学习（${lessonsCount}/14）` : '开始第 1 课'}
+          </button>
+          {!tutorialDone && (
+            <button className="btn ghost sm" onClick={onTutorial}>
+              先看 1 分钟界面导览
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="facts">
         <div className="fact">
@@ -423,6 +439,7 @@ export function Sandbox({ db }) {
 
 export function Dictionary({ db }) {
   const [openTable, setOpenTable] = React.useState(TABLES[0].name)
+  const [tab, setTab] = React.useState('tables')
   const t = TABLES.find((x) => x.name === openTable)
   const sample = React.useMemo(() => {
     if (!db) return null
@@ -492,6 +509,27 @@ export function Dictionary({ db }) {
           <div className="col-head">示例数据（前 3 行）</div>
           <div className="rail">
             <ResultTable result={sample} maxRows={3} />
+          </div>
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: 16 }} data-testid="glossary">
+        <div className="panel-head">
+          名词解释
+          <span className="sub">第一次遇到某个词，可以来这里查——每条都配了一个最小示例</span>
+        </div>
+        <div className="panel-body">
+          <div className="term-grid">
+            {TERMS.map((term) => (
+              <div className="term-card" key={term.key}>
+                <div className="term-name">
+                  {term.name}
+                  {term.aka?.length ? <span className="dim">（也叫{term.aka.join('、')}）</span> : null}
+                </div>
+                <div className="term-what">{term.what}</div>
+                <code className="term-demo">{term.demo}</code>
+              </div>
+            ))}
           </div>
         </div>
       </div>

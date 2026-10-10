@@ -2,6 +2,7 @@ import React from 'react'
 import { getDb } from './db.js'
 import { LEVELS } from './levels.js'
 import { VARIANTS } from './variants.js'
+import { LESSONS } from './lessons.js'
 import {
   loadProgress,
   saveProgress,
@@ -12,13 +13,16 @@ import {
   markWrong,
   advanceWrong,
   pendingItems,
-  dueItems
+  dueItems,
+  markLessonDone,
+  lessonsDone
 } from './progress.js'
 import { Toast, TopBar } from './ui.jsx'
 import { Intro, LevelMap, Sandbox, Dictionary } from './pages.jsx'
 import LevelPlay from './LevelPlay.jsx'
 import Tutorial from './Tutorial.jsx'
 import Review from './Review.jsx'
+import Lessons from './Lessons.jsx'
 
 const REVIEW_BONUS = 15
 const REVIEW_BATCH = 3
@@ -138,9 +142,13 @@ export default function App() {
       return
     }
     if (route.then === 'intro' && completed) {
-      // 教程最后一步的按钮写的是「开始第 1 关」，那就真的把他送进第 1 关
-      setRoute({ page: 'level', id: 1 })
-      toast('入门完成，这就是你的第一个需求单')
+      // 界面走完，接着上「零基础第一课」，从最基础的 SQL 概念开始
+      setRoute({ page: 'lessons', start: 1 })
+      toast('界面认完了，接着从最基础的概念开始')
+      return
+    }
+    if (route.then === 'lessons') {
+      setRoute({ page: 'lessons', start: route.backId || 1 })
       return
     }
     setRoute({ page: route.then === 'intro' ? 'intro' : 'map' })
@@ -155,7 +163,9 @@ export default function App() {
         onNav={setRoute}
         dueCount={due.length}
         wrongCount={pendingItems(progress).length}
+        lessonsCount={lessonsDone(progress)}
         onReview={() => (queue.length ? setRoute({ page: 'review' }) : toast('现在没有要复盘的题，先去闯关吧'))}
+        onLessons={() => setRoute({ page: 'lessons', start: 1 })}
         onReset={() => {
           if (confirm('确定清空所有进度，从第一天重新入职吗？')) {
             setProgress(resetProgress())
@@ -169,6 +179,7 @@ export default function App() {
         <Intro
           onPick={pickPath}
           onTutorial={() => setRoute({ page: 'tutorial', then: 'intro' })}
+          onLessons={() => setRoute({ page: 'lessons', start: 1 })}
           hasProgress={Object.keys(progress.stars).length > 0}
           tutorialDone={progress.tutorialDone}
         />
@@ -211,6 +222,21 @@ export default function App() {
           onFinish={() => {
             setRoute({ page: 'map' })
             toast('复盘完成，待改进项往前走了一档')
+          }}
+        />
+      )}
+
+      {route.page === 'lessons' && (
+        <Lessons
+          db={db}
+          lessons={LESSONS}
+          startId={route.start || 1}
+          progress={progress}
+          onDoneLesson={(l) => setProgress((p) => markLessonDone(p, l.id))}
+          onExit={() => setRoute({ page: 'map' })}
+          onAllDone={() => {
+            setRoute({ page: 'map' })
+            toast('第一课 14 节全部完成，去闯关吧')
           }}
         />
       )}

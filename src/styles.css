@@ -178,6 +178,15 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.35; }
   text-align: center;
   font-family: var(--mono);
 }
+.lessons-btn { display: inline-flex; align-items: center; gap: 5px; }
+.lessons-btn .done-badge {
+  font-size: 10.5px;
+  font-family: var(--mono);
+  background: var(--ok-soft);
+  color: #0b7a51;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
 
 .grow { flex: 1; }
 
@@ -772,6 +781,122 @@ tr.diff td { background: var(--bad-soft); }
 .sym-note { font-size: 11.5px; color: var(--text-3); margin-top: 3px; }
 .sym-foot { margin-top: 10px; padding: 8px 10px; border-radius: 9px; background: var(--surface-2); font-size: 12.3px; color: var(--text-2); line-height: 1.7; }
 .sym-foot b { color: var(--text); }
+
+/* ---------- 术语：虚线 + 悬停解释 ---------- */
+.term { border-bottom: 1px dashed #b9c3d0; cursor: help; }
+.term:hover { background: #eef3fd; border-bottom-color: var(--brand); }
+.term-row { padding: 8px 0; border-top: 1px dashed var(--line); }
+.term-row:first-child { border-top: 0; }
+.term-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.term-what { font-size: 12.6px; color: var(--text-2); line-height: 1.65; }
+.term-demo {
+  display: inline-block;
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 3px 8px;
+  color: var(--brand-2);
+  cursor: pointer;
+  word-break: break-all;
+}
+
+/* ---------- 编辑器颜色说明条 ---------- */
+.legend-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 5px 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--text-3);
+  flex: none;
+}
+.legend-bar .legend-title { color: var(--text-2); font-weight: 600; }
+.lg { display: inline-flex; align-items: center; gap: 4px; cursor: help; }
+.lg i { width: 9px; height: 9px; border-radius: 3px; display: block; }
+.lg-keyword i { background: #7fb0ff; }
+.lg-table i { background: #c792ea; }
+.lg-column i { background: #7fd1e0; }
+.lg-string i { background: #7ddc9e; }
+.lg-number i { background: #e79bd5; }
+.lg-error i { background: #ff6b6b; }
+
+/* ---------- 编辑器里表名 / 列名 / 错误片段的颜色 ---------- */
+.cm-tableName { color: #c792ea !important; font-weight: 600; }
+.cm-columnName { color: #7fd1e0 !important; }
+.cm-errToken { background: rgba(240, 97, 109, 0.22); border-bottom: 1px solid #ff6b6b; border-radius: 2px; }
+
+/* ---------- 三段式提示 ---------- */
+.hint-body { padding: 0 10px 10px 36px; }
+.hint-how { font-size: 12.8px; color: #33414f; line-height: 1.65; margin-bottom: 6px; }
+.hint-body .hint-code { margin: 0; }
+
+/* 错误提示里的三行：哪里错 / 为什么 / 怎么改 */
+.finding .frow { display: flex; gap: 8px; align-items: flex-start; margin-top: 4px; }
+.finding .flbl {
+  flex: none;
+  width: 46px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #9c3438;
+  background: #fdeeee;
+  border-radius: 6px;
+  text-align: center;
+  padding: 1px 0;
+}
+.finding .frow > span:last-child { min-width: 0; }
+
+/* 课程总结 */
+.summary-box {
+  background: var(--ok-soft);
+  border: 1px solid #c8ecdd;
+  border-radius: 9px;
+  padding: 9px 11px;
+  font-size: 13px;
+  color: #17573c;
+  line-height: 1.7;
+}
+
+/* 首页的基础课卡片 */
+.course-card {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  border: 1px solid #d5e2ff;
+  background: linear-gradient(120deg, #f2f7ff, #ffffff 60%);
+  box-shadow: var(--shadow);
+}
+.course-card .cc-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--brand-2);
+  background: var(--brand-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.course-card h3 { margin: 8px 0 6px; font-size: 20px; }
+.course-card p { margin: 0 0 10px; color: var(--text-2); font-size: 13.5px; max-width: 620px; }
+.course-card .cc-main { flex: 1; min-width: 0; }
+.course-card .cc-side { flex: none; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+@media (max-width: 860px) {
+  .course-card { flex-direction: column; align-items: stretch; }
+}
+
+/* 术语表网格 */
+.term-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.term-card { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; background: var(--surface); }
+.term-card .term-name { font-size: 13.5px; font-weight: 700; }
+.term-card .term-name .dim { font-weight: 400; font-size: 12px; }
+.term-card .term-what { font-size: 12.6px; color: var(--text-2); line-height: 1.65; margin-top: 3px; }
 
 /* 「怎么想出来」里的两条分支 */
 .why-branches { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

@@ -20,9 +20,19 @@ export function emptyProgress() {
     advancedUnlocked: false,
     advancedCode: null,
     wrong: {}, // 错题盒：{ [levelId]: { n, stage, dueAt } }
-    cleared: [] // 已经彻底掌握（三档复习都过了）的关卡
+    cleared: [], // 已经彻底掌握（三档复习都过了）的关卡
+    lessons: {} // 零基础第一课：{ [lessonId]: true }
   }
 }
+
+/* ---------- 零基础第一课 ---------- */
+
+export function markLessonDone(p, lessonId) {
+  if (p.lessons?.[lessonId]) return p
+  return { ...p, lessons: { ...(p.lessons || {}), [lessonId]: true } }
+}
+
+export const lessonsDone = (p) => Object.keys(p.lessons || {}).length
 
 /* ---------- 错题盒：1 / 3 / 7 天后以变体题复现 ---------- */
 

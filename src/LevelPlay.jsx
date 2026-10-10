@@ -7,12 +7,27 @@ import { translateError, noResultHint } from './errors.js'
 import { CM_SCHEMA } from './schema.js'
 import { PLAIN } from './explanations.js'
 import { STORY } from './story.js'
+import { hintsOf } from './hints.js'
 import { BASIC_BLOCKS, lintSql, literalsOf } from './sqlMeta.js'
 import { thinkingSteps } from './why.js'
 import { analyzeSyntax, syntaxTips } from './syntax.js'
 import { symbolsForLevel, primarySymbol } from './symbols.js'
 import { ALTERNATIVES } from './alternatives.js'
-import { ObjectTree, ResultTable, SchemaCard, SqlText, Stars, SyntaxNotes, ValueChips } from './ui.jsx'
+import { termsIn } from './glossary.js'
+import { sqlPainter, rangesFromFindings } from './cmExtras.js'
+import {
+  ColorLegend,
+  HintList,
+  ObjectTree,
+  ResultTable,
+  RichText,
+  SchemaCard,
+  SqlText,
+  Stars,
+  SyntaxNotes,
+  TermList,
+  ValueChips
+} from './ui.jsx'
 import { rankOf, starsFor, rewardFor } from './progress.js'
 import { IconArrowLeft, IconBulb, IconCheck, IconChevron, IconPlay, IconSpark, IconWarn } from './icons.jsx'
 
@@ -72,6 +87,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
   const [ms, setMs] = React.useState(null)
   const [openTable, setOpenTable] = React.useState(level.tables[0])
   const [lint, setLint] = React.useState([])
+  const [errRanges, setErrRanges] = React.useState([])
   const [passed, setPassed] = React.useState(!!progress.stars[level.id])
   const [openWhy, setOpenWhy] = React.useState(0)
   const [sample, setSample] = React.useState(null)
@@ -86,6 +102,12 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
   const tips = React.useMemo(() => syntaxTips(level.referenceSql), [level.id])
   const syms = React.useMemo(() => symbolsForLevel(level.referenceSql), [level.id])
   const mainSym = React.useMemo(() => primarySymbol(level.referenceSql), [level.id])
+  const hints = React.useMemo(() => hintsOf(level.id), [level.id])
+  const levelTerms = React.useMemo(() => {
+    const s = [PLAIN[level.id], level.task, STORY[level.id]?.ask, ...hints.map((h) => h.how)].filter(Boolean).join(' ')
+    return termsIn(s).slice(0, 5)
+  }, [level.id, hints])
+  const cmExt = React.useMemo(() => [...extensions, sqlPainter(errRanges)], [errRanges])
 
   React.useEffect(() => {
     setText('')
@@ -101,6 +123,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
     setMs(null)
     setOpenTable(level.tables[0])
     setLint([])
+    setErrRanges([])
     setPassed(!!progress.stars[level.id])
     setOpenWhy(0)
     setSample(null)
@@ -128,6 +151,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
       setMs(Math.round(performance.now() - t0))
       setActual(null)
       const findings = analyzeSyntax(text)
+      setErrRanges(rangesFromFindings(text, findings))
       const info =
         e.code === 'EMPTY'
           ? { title: '还没有写 SQL', detail: '在编辑器里写一条查询语句，再点「执行」或按 Ctrl + Enter。' }
@@ -150,6 +174,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
     const v = judge(exp, mine, level, text)
 
     if (v.pass) {
+      setErrRanges([])
       const stars = starsFor(n, hintsUsed)
       const bonus = rewardFor(stars)
       setPassed(true)
@@ -175,6 +200,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
       })
       onFinish(level, stars, first ? bonus : 0)
     } else {
+      setErrRanges([])
       setStatus({ type: 'bad', title: '结果还不对', detail: v.reason, tip: v.tip })
       setReasons(diagnose(text, level))
       setDiffs({ missing: v.missingRows, extra: v.extraRows, expected: exp, actual: mine })
@@ -231,7 +257,31 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                   {i + 1}. {f.title}
                 </div>
                 <div className="fd">
-                  <SqlText text={f.detail} />
+                  {f.where && (
+                    <div className="frow">
+                      <span className="flbl">哪里错</span>
+                      <span>
+                        <RichText text={f.where} />
+                      </span>
+                    </div>
+                  )}
+                  {f.why && (
+                    <div className="frow">
+                      <span className="flbl">为什么</span>
+                      <span>
+                        <RichText text={f.why} />
+                      </span>
+                    </div>
+                  )}
+                  {f.how && (
+                    <div className="frow">
+                      <span className="flbl">怎么改</span>
+                      <span>
+                        <RichText text={f.how} />
+                      </span>
+                    </div>
+                  )}
+                  {!f.where && !f.why && !f.how && <RichText text={f.detail} />}
                 </div>
               </div>
             ))}
@@ -251,12 +301,6 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
       </div>
     </div>
   )
-
-  const hintRows = [
-    { label: '方向提示', text: level.hints[0] },
-    { label: '结构提示', text: level.hints[1] },
-    { label: '参考写法', text: level.hints[2] }
-  ]
 
   return (
     <div className="page">
@@ -325,11 +369,13 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
               value={text}
               height="170px"
               theme="dark"
-              extensions={extensions}
+              extensions={cmExt}
               onChange={setText}
               basicSetup={{ foldGutter: false }}
             />
           </div>
+
+          <ColorLegend />
 
           {!text.trim() && (
             <div className="empty-note">
@@ -476,7 +522,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                   <div className="tips-h">这一关的语法要点（先说规则，再自己写）</div>
                   {tips.map((t) => (
                     <div className="tip-row" key={t}>
-                      · <SqlText text={t} />
+                      · <RichText text={t} />
                     </div>
                   ))}
                 </div>
@@ -503,9 +549,9 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                   {openWhy === i && (
                     <div className="why-body">
                       <span className="lbl">这一步在做什么</span>
-                      <SqlText text={s.what} />
+                      <RichText text={s.what} />
                       <span className="lbl">为什么必须有它</span>
-                      <SqlText text={s.why} />
+                      <RichText text={s.why} />
                       {s.branches && (
                         <div className="why-branches">
                           {s.branches.map((b) => (
@@ -524,7 +570,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                       {s.choiceNote && (
                         <div className={'choice-note ' + s.choiceNote.kind}>
                           <b>这一关呢？</b>
-                          <SqlText text={s.choiceNote.text} />
+                          <RichText text={s.choiceNote.text} />
                         </div>
                       )}
                       {s.trap && <div className="trap">⚠️ {s.trap}</div>}
@@ -562,10 +608,19 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
               icon={<IconBulb width={14} height={14} />}
               right={<span className="tag">{level.point}</span>}
               testid="teach"
+              defaultOpen={level.id <= 3}
             >
               <p style={{ margin: 0 }}>
-                <SqlText text={PLAIN[level.id]} />
+                <RichText text={PLAIN[level.id]} />
               </p>
+              {levelTerms.length > 0 && (
+                <>
+                  <div className="muted" style={{ fontSize: 12.5, margin: '12px 0 2px' }}>
+                    这一关涉及的名词（鼠标停上去有解释）：
+                  </div>
+                  <TermList terms={levelTerms} />
+                </>
+              )}
               {level.sample && (
                 <>
                   <div className="muted" style={{ fontSize: 12.5, margin: '12px 0 4px' }}>
@@ -596,11 +651,11 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
                     <div className="sym-line">{s.what}</div>
                     <div className="sym-line ok">
                       <b>什么时候写：</b>
-                      <SqlText text={s.when} />
+                      <RichText text={s.when} />
                     </div>
                     <div className="sym-line no">
                       <b>什么时候不写：</b>
-                      <SqlText text={s.whenNot} />
+                      <RichText text={s.whenNot} />
                     </div>
                     <div className="sym-code" onClick={() => setText(s.ex.code)} title="点一下放进编辑器">
                       {s.ex.code}
@@ -625,33 +680,9 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
               accent
             >
               <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>
-                从浅到深：先给方向，再给结构，最后才是写法。点哪一条就开哪一条——看得越多，星星越少。
+                从浅到深：先给方向，再给结构，最后才是写法。点哪条开哪条——看得越多，星星越少。
               </div>
-              {hintRows.map((h, i) => {
-                const open = hintsUsed > i
-                return (
-                  <div className={'hint-row' + (open ? ' open' : '')} key={h.label}>
-                    <button className="hint-head" onClick={() => !open && setHintsUsed(i + 1)}>
-                      <span className="n">{i + 1}</span>
-                      <span>{open ? h.label : `点开看：${h.label}`}</span>
-                      <div className="grow" />
-                      <span className="dim" style={{ fontSize: 11.5 }}>
-                        {open ? '已展开' : '点这里'}
-                      </span>
-                    </button>
-                    {open &&
-                      (i === 2 ? (
-                        <code className="hint-code" onClick={() => setText(h.text)} title="点一下放进编辑器">
-                          {h.text}
-                        </code>
-                      ) : (
-                        <div className="hint-text">
-                          <SqlText text={h.text} />
-                        </div>
-                      ))}
-                  </div>
-                )
-              })}
+              <HintList hints={hints} used={hintsUsed} onUse={setHintsUsed} onInsert={setText} />
             </Section>
 
             <Section title={`其他写法（${alts.length} 种）`} icon={<IconSpark width={14} height={14} />} testid="alts">

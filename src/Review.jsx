@@ -7,7 +7,9 @@ import { translateError, noResultHint } from './errors.js'
 import { CM_SCHEMA } from './schema.js'
 import { BASIC_BLOCKS, lintSql, literalsOf } from './sqlMeta.js'
 import { analyzeSyntax } from './syntax.js'
-import { ObjectTree, ResultTable, SchemaCard, SqlText, ValueChips } from './ui.jsx'
+import { hintsOf } from './hints.js'
+import { sqlPainter, rangesFromFindings } from './cmExtras.js'
+import { ColorLegend, HintList, ObjectTree, ResultTable, RichText, SchemaCard, ValueChips } from './ui.jsx'
 import { IconArrowLeft, IconCheck, IconPlay, IconWarn } from './icons.jsx'
 
 const extensions = [sqlLang({ dialect: SQLite, schema: CM_SCHEMA, upperCaseKeywords: true })]
@@ -28,6 +30,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
   const [attempts, setAttempts] = React.useState(0)
   const [hintsUsed, setHintsUsed] = React.useState(0)
   const [lint, setLint] = React.useState([])
+  const [errRanges, setErrRanges] = React.useState([])
   const [done, setDone] = React.useState([]) // 已通过的题号
   const [openTable, setOpenTable] = React.useState(null)
   const [sample, setSample] = React.useState(null)
@@ -38,6 +41,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
   const variant = item?.variant
   const last = i >= queue.length - 1
   const values = React.useMemo(() => (variant ? literalsOf(variant.referenceSql) : []), [variant])
+  const cmExt = React.useMemo(() => [...extensions, sqlPainter(errRanges)], [errRanges])
 
   React.useEffect(() => {
     setText('')
@@ -50,6 +54,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
     setAttempts(0)
     setHintsUsed(0)
     setLint([])
+    setErrRanges([])
     setSample(null)
     setOpenTable(variant?.tables?.[0] || null)
   }, [i])
@@ -84,6 +89,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
       setMs(Math.round(performance.now() - t0))
       setActual(null)
       const findings = analyzeSyntax(text)
+      setErrRanges(rangesFromFindings(text, findings))
       const info =
         e.code === 'EMPTY'
           ? { title: '还没有写 SQL', detail: '在编辑器里写一条查询语句，再点「执行」或按 Ctrl + Enter。' }
@@ -102,11 +108,13 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
     setExpected(exp)
     const v = judge(exp, mine, variant, text)
     if (v.pass) {
+      setErrRanges([])
       setStatus({ type: 'ok', title: '这道过了', detail: '同一类问题换个场景也能做对，说明是真的会了。' })
       setReasons([])
       setDone((d) => [...new Set([...d, i])])
       onPass(item)
     } else {
+      setErrRanges([])
       setStatus({ type: 'bad', title: '还不对', detail: v.reason, tip: v.tip })
       setReasons(diagnose(text, variant))
       setDiffs({ missing: v.missingRows, extra: v.extraRows, expected: exp, actual: mine })
@@ -183,11 +191,12 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
               value={text}
               height="160px"
               theme="dark"
-              extensions={extensions}
+              extensions={cmExt}
               onChange={setText}
               basicSetup={{ foldGutter: false }}
             />
           </div>
+          <ColorLegend />
 
           {!text.trim() && (
             <div className="empty-note">
@@ -236,7 +245,31 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
                               {k + 1}. {f.title}
                             </div>
                             <div className="fd">
-                              <SqlText text={f.detail} />
+                              {f.where && (
+                                <div className="frow">
+                                  <span className="flbl">哪里错</span>
+                                  <span>
+                                    <RichText text={f.where} />
+                                  </span>
+                                </div>
+                              )}
+                              {f.why && (
+                                <div className="frow">
+                                  <span className="flbl">为什么</span>
+                                  <span>
+                                    <RichText text={f.why} />
+                                  </span>
+                                </div>
+                              )}
+                              {f.how && (
+                                <div className="frow">
+                                  <span className="flbl">怎么改</span>
+                                  <span>
+                                    <RichText text={f.how} />
+                                  </span>
+                                </div>
+                              )}
+                              {!f.where && !f.why && !f.how && <RichText text={f.detail} />}
                             </div>
                           </div>
                         ))}
@@ -338,35 +371,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
               <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>
                 考的是同一个知识点，所以原来的提示照样管用。
               </div>
-              {[
-                { label: '方向提示', text: level.hints[0] },
-                { label: '结构提示', text: level.hints[1] },
-                { label: '参考写法', text: level.hints[2] }
-              ].map((h, k) => {
-                const open = hintsUsed > k
-                return (
-                  <div className={'hint-row' + (open ? ' open' : '')} key={h.label}>
-                    <button className="hint-head" onClick={() => !open && setHintsUsed(k + 1)}>
-                      <span className="n">{k + 1}</span>
-                      <span>{open ? h.label : `点开看：${h.label}`}</span>
-                      <div className="grow" />
-                      <span className="dim" style={{ fontSize: 11.5 }}>
-                        {open ? '已展开' : '点这里'}
-                      </span>
-                    </button>
-                    {open &&
-                      (k === 2 ? (
-                        <code className="hint-code" onClick={() => setText(h.text)} title="点一下放进编辑器">
-                          {h.text}
-                        </code>
-                      ) : (
-                        <div className="hint-text">
-                          <SqlText text={h.text} />
-                        </div>
-                      ))}
-                  </div>
-                )
-              })}
+              <HintList hints={hintsOf(item.levelId)} used={hintsUsed} onUse={setHintsUsed} onInsert={setText} />
             </div>
 
             {status?.type === 'ok' && (

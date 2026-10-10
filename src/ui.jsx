@@ -1,6 +1,8 @@
 import React from 'react'
 import { TABLES } from './schema.js'
 import { annotate } from './annotate.js'
+import { markTerms } from './glossary.js'
+import { COLOR_LEGEND } from './cmExtras.js'
 import { IconChevron, IconDatabase, IconTable, IconStar } from './icons.jsx'
 
 export function Stars({ n, size = 14 }) {
@@ -13,7 +15,18 @@ export function Stars({ n, size = 14 }) {
   )
 }
 
-export function TopBar({ rankInfo, progress, route, onNav, onReset, dueCount = 0, wrongCount = 0, onReview }) {
+export function TopBar({
+  rankInfo,
+  progress,
+  route,
+  onNav,
+  onReset,
+  dueCount = 0,
+  wrongCount = 0,
+  lessonsCount = 0,
+  onReview,
+  onLessons
+}) {
   return (
     <header className="topbar">
       <div className="brand" onClick={() => onNav({ page: 'intro' })} title="回到首页">
@@ -23,6 +36,14 @@ export function TopBar({ rankInfo, progress, route, onNav, onReset, dueCount = 0
         <span className="name">数据部新人</span>
       </div>
       <nav className="nav">
+        <button
+          className={'lessons-btn' + (route.page === 'lessons' ? ' on' : '')}
+          onClick={onLessons}
+          title="14 节短课，从最基础的 SQL 概念讲起"
+        >
+          基础课
+          {lessonsCount > 0 && <span className="done-badge">{lessonsCount}/14</span>}
+        </button>
         <button
           className={'review-btn' + (route.page === 'review' ? ' on' : '') + (dueCount > 0 ? ' alert' : '')}
           onClick={onReview}
@@ -218,37 +239,44 @@ export function Toast({ text }) {
 
 const KW_RE = /\b(SELECT|FROM|WHERE|AND|OR|NOT|NULL|IS|IN|LIKE|ORDER BY|GROUP BY|HAVING|LIMIT|DISTINCT|LEFT JOIN|JOIN|ON|AS|DESC|ASC|SUM|COUNT|AVG|ROUND|CASE WHEN|THEN|ELSE|END|strftime|substr|instr|IFNULL|ISNULL)\b/g
 
-/** 把白话文案里的字面值和关键字自动变成等宽小标签，一眼能看出「这是要照着写的东西」 */
-export function SqlText({ text }) {
-  const parts = React.useMemo(() => {
-    const raw = String(text ?? '')
-    const out = []
-    const re = /(`[^`]*`|'[^']*')/g
-    let last = 0
-    let m
-    while ((m = re.exec(raw))) {
-      if (m.index > last) out.push({ t: 'p', v: raw.slice(last, m.index) })
-      out.push({ t: 'c', v: m[0] })
-      last = m.index + m[0].length
-    }
-    if (last < raw.length) out.push({ t: 'p', v: raw.slice(last) })
-    return out
-  }, [text])
-
-  const renderPlain = (s, key) => {
-    const bits = []
-    let last = 0
-    let m
-    KW_RE.lastIndex = 0
-    while ((m = KW_RE.exec(s))) {
-      if (m.index > last) bits.push(s.slice(last, m.index))
-      bits.push(<code className="inline-kw" key={`${key}-${m.index}`}>{m[0]}</code>)
-      last = m.index + m[0].length
-    }
-    if (last < s.length) bits.push(s.slice(last))
-    return <React.Fragment key={key}>{bits}</React.Fragment>
+/** 把文案按「代码片段」和「普通文字」切开 */
+function splitCode(text) {
+  const raw = String(text ?? '')
+  const out = []
+  const re = /(`[^`]*`|'[^']*')/g
+  let last = 0
+  let m
+  while ((m = re.exec(raw))) {
+    if (m.index > last) out.push({ t: 'p', v: raw.slice(last, m.index) })
+    out.push({ t: 'c', v: m[0] })
+    last = m.index + m[0].length
   }
+  if (last < raw.length) out.push({ t: 'p', v: raw.slice(last) })
+  return out
+}
 
+/** 普通文字里的 SQL 关键字高亮 */
+function renderKeywords(s, key) {
+  const bits = []
+  let last = 0
+  let m
+  KW_RE.lastIndex = 0
+  while ((m = KW_RE.exec(s))) {
+    if (m.index > last) bits.push(s.slice(last, m.index))
+    bits.push(
+      <code className="inline-kw" key={`${key}-${m.index}`}>
+        {m[0]}
+      </code>
+    )
+    last = m.index + m[0].length
+  }
+  if (last < s.length) bits.push(s.slice(last))
+  return <React.Fragment key={key}>{bits}</React.Fragment>
+}
+
+/** 只处理代码片段与关键字 */
+export function SqlText({ text }) {
+  const parts = React.useMemo(() => splitCode(text), [text])
   return (
     <>
       {parts.map((p, i) =>
@@ -257,10 +285,106 @@ export function SqlText({ text }) {
             {p.v.startsWith('`') ? p.v.slice(1, -1) : p.v}
           </code>
         ) : (
-          renderPlain(p.v, i)
+          renderKeywords(p.v, i)
         )
       )}
     </>
+  )
+}
+
+/**
+ * 富文本：代码片段 + 关键字 + 术语（术语带虚线下划线，鼠标停上去有解释）。
+ * 零基础玩家第一次遇到专业词时，不用离开当前页面就能查。
+ */
+export function RichText({ text }) {
+  const parts = React.useMemo(() => splitCode(text), [text])
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.t === 'c' ? (
+          <code className="inline-code" key={i}>
+            {p.v.startsWith('`') ? p.v.slice(1, -1) : p.v}
+          </code>
+        ) : (
+          <React.Fragment key={i}>
+            {markTerms(p.v).map((seg, k) =>
+              seg.term ? (
+                <span className="term" key={k} title={`${seg.term.name}：${seg.term.what}\n例：${seg.term.demo}`}>
+                  {seg.v}
+                </span>
+              ) : (
+                renderKeywords(seg.v, k)
+              )
+            )}
+          </React.Fragment>
+        )
+      )}
+    </>
+  )
+}
+
+/** 编辑器里的颜色各代表什么 */
+export function ColorLegend() {
+  return (
+    <div className="legend-bar" title="编辑器里的颜色含义">
+      <span className="legend-title">颜色含义</span>
+      {COLOR_LEGEND.map((l) => (
+        <span className={'lg ' + l.cls} key={l.label} title={l.note}>
+          <i />
+          {l.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** 三段式提示：学什么 + 怎么做 + 最小示例 */
+export function HintList({ hints, used, onUse, onInsert }) {
+  const labels = ['方向提示', '结构提示', '参考写法']
+  return (
+    <div>
+      {hints.map((h, i) => {
+        const open = used > i
+        return (
+          <div className={'hint-row' + (open ? ' open' : '')} key={i}>
+            <button className="hint-head" onClick={() => !open && onUse(i + 1)}>
+              <span className="n">{i + 1}</span>
+              <span>{open ? h.learn : `点开看：${labels[i]}`}</span>
+              <div className="grow" />
+              <span className="dim" style={{ fontSize: 11.5 }}>
+                {open ? '已展开' : '点这里'}
+              </span>
+            </button>
+            {open && (
+              <div className="hint-body">
+                <div className="hint-how">
+                  <RichText text={h.how} />
+                </div>
+                <code className="hint-code" onClick={() => onInsert?.(h.demo)} title="点一下放进编辑器">
+                  {h.demo}
+                </code>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 术语卡：是什么 + 最小示例 */
+export function TermList({ terms }) {
+  if (!terms?.length) return null
+  return (
+    <div>
+      {terms.map((t) => (
+        <div className="term-row" key={t.key}>
+          <div className="term-name">{t.name}</div>
+          <div className="term-what">{t.what}</div>
+          <code className="term-demo">{t.demo}</code>
+        </div>
+      ))}
+    </div>
   )
 }
 

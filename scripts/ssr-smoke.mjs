@@ -39,6 +39,9 @@ const levels = await server.ssrLoadModule('/src/levels.js')
 const play = await server.ssrLoadModule('/src/LevelPlay.jsx')
 const review = await server.ssrLoadModule('/src/Review.jsx')
 const variants = await server.ssrLoadModule('/src/variants.js')
+const lessonsMod = await server.ssrLoadModule('/src/lessons.js')
+const lessonsPage = await server.ssrLoadModule('/src/Lessons.jsx')
+const glossary = await server.ssrLoadModule('/src/glossary.js')
 
 const p = { ...progress.emptyProgress(), stars: { 1: 3, 2: 2, 5: 3 }, bonus: 250, path: 'basic' }
 const rankInfo = progress.rankOf(p)
@@ -99,6 +102,35 @@ smoke('周会复盘页', () =>
       onPass: () => {},
       onExit: () => {},
       onFinish: () => {}
+    })
+  )
+)
+smoke('零基础第一课', () =>
+  renderToString(
+    React.createElement(lessonsPage.default, {
+      db: {},
+      lessons: lessonsMod.LESSONS,
+      startId: 1,
+      progress: p,
+      onDoneLesson: () => {},
+      onExit: () => {},
+      onAllDone: () => {}
+    })
+  )
+)
+smoke('术语卡', () => renderToString(React.createElement(ui.TermList, { terms: glossary.TERMS.slice(0, 4) })))
+smoke('颜色说明条', () => renderToString(React.createElement(ui.ColorLegend)))
+smoke('三段式提示', () =>
+  renderToString(
+    React.createElement(ui.HintList, {
+      hints: [
+        { learn: '学习点', how: '怎么做', demo: 'SELECT 1' },
+        { learn: '学习点2', how: '怎么做2', demo: 'SELECT 2' },
+        { learn: '学习点3', how: '怎么做3', demo: 'SELECT 3' }
+      ],
+      used: 1,
+      onUse: () => {},
+      onInsert: () => {}
     })
   )
 )

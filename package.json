@@ -21,6 +21,8 @@
     "test:syntax": "node scripts/test-syntax.mjs"
 ,
     "test:symbols": "node scripts/test-symbols.mjs"
+,
+    "verify:lesson": "node scripts/verify-lessons.mjs"
   },
   "dependencies": {
     "@codemirror/lang-sql": "^6.8.0",
