@@ -120,6 +120,20 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.35; }
 .tag.ok { background: var(--ok-soft); color: #0b7a51; border-color: #c8ecdd; }
 .tag.gold { background: #fdf6e4; color: var(--gold); border-color: #f3e4bd; }
 
+/* 关键词小胶囊：首页「基础课」卡片上列的 SELECT / FROM / WHERE… */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
 .muted { color: var(--text-2); }
 .dim { color: var(--text-3); }
 .mono { font-family: var(--mono); }
