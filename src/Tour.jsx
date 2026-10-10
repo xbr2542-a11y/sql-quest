@@ -55,6 +55,25 @@ export default function Tour({ steps, onFinish, onSkip, onAction, onClear }) {
     return () => clearTimeout(t)
   }, [i, step?.action, step?.done, last, steps.length, step?.hold])
 
+  // 卡片尺寸要真实测量：写死尺寸会导致卡片顶出屏幕、按钮点不到
+  const cardRef = React.useRef(null)
+  const [cardSize, setCardSize] = React.useState({ w: 620, h: 220 })
+  React.useLayoutEffect(() => {
+    const measure = () => {
+      const el = cardRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      setCardSize((prev) => (Math.abs(prev.w - r.width) < 1 && Math.abs(prev.h - r.height) < 1 ? prev : { w: r.width, h: r.height }))
+    }
+    measure()
+    const t = setTimeout(measure, 60)
+    window.addEventListener('resize', measure)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('resize', measure)
+    }
+  }, [i, step?.title, step?.body, step?.done, step?.note?.text])
+
   // 如果目标元素本身消失了，退回居中卡片
   const pad = 6
   const vw = typeof window === 'undefined' ? 1440 : window.innerWidth
@@ -68,16 +87,32 @@ export default function Tour({ steps, onFinish, onSkip, onAction, onClear }) {
       }
     : null
 
-  const cardW = 356
-  let cardPos = { left: Math.max(16, (vw - cardW) / 2), top: Math.max(16, vh / 2 - 130) }
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+  const gap = 14
+  const margin = 12
+  // 横向宽卡片：宽度跟着屏幕走，正文行数少一半，卡片就矮一半
+  // 横向宽卡片：屏幕越宽卡片越宽，正文行数越少、卡片越矮
+  const cardW = Math.max(300, Math.min(780, vw - margin * 2))
+  const cardH = Math.min(cardSize.h, vh - margin * 2)
+
+  let cardPos = { left: clamp((vw - cardW) / 2, margin, vw - cardW - margin), top: clamp((vh - cardH) / 2, margin, vh - cardH - margin) }
   if (hole) {
     const spaceBelow = vh - hole.bottom
     const spaceAbove = hole.top
     const spaceRight = vw - hole.right
-    if (spaceBelow > 250) cardPos = { left: Math.min(Math.max(16, hole.left), vw - cardW - 16), top: hole.bottom + 14 }
-    else if (spaceAbove > 250) cardPos = { left: Math.min(Math.max(16, hole.left), vw - cardW - 16), top: hole.top - 14 - 216 }
-    else if (spaceRight > cardW + 24) cardPos = { left: hole.right + 16, top: Math.min(Math.max(16, hole.top), vh - 250) }
-    else cardPos = { left: Math.max(16, hole.left - cardW - 16), top: Math.min(Math.max(16, hole.top), vh - 250) }
+    const spaceLeft = hole.left
+    const leftAligned = clamp(hole.left, margin, vw - cardW - margin)
+    if (spaceBelow >= cardH + gap) cardPos = { left: leftAligned, top: hole.bottom + gap }
+    else if (spaceAbove >= cardH + gap) cardPos = { left: leftAligned, top: hole.top - gap - cardH }
+    else if (spaceRight >= cardW + gap) cardPos = { left: hole.right + gap, top: clamp(hole.top, margin, Math.max(margin, vh - cardH - margin)) }
+    else if (spaceLeft >= cardW + gap) cardPos = { left: hole.left - gap - cardW, top: clamp(hole.top, margin, Math.max(margin, vh - cardH - margin)) }
+    // 兜底：贴着能看到的那一侧，并保证整张卡片落在屏幕内
+    else cardPos = { left: leftAligned, top: clamp(spaceBelow > spaceAbove ? hole.bottom + gap : hole.top - gap - cardH, margin, Math.max(margin, vh - cardH - margin)) }
+  }
+  // 无论如何都不能越界
+  cardPos = {
+    left: clamp(cardPos.left, margin, Math.max(margin, vw - cardW - margin)),
+    top: clamp(cardPos.top, margin, Math.max(margin, vh - cardH - margin))
   }
 
   const arrowAt = hole
@@ -120,69 +155,73 @@ export default function Tour({ steps, onFinish, onSkip, onAction, onClear }) {
       )}
 
       {/* 讲解卡片 */}
-      <div className="tour-card" style={{ left: cardPos.left, top: cardPos.top, width: cardW }} data-testid="tour-card">
-        <div className="tour-head">
-          <span className="tour-step">
-            第 {i + 1} / {steps.length} 步
-          </span>
+      <div
+        className={'tour-card' + (vw >= 1080 ? ' wide' : '')}
+        ref={cardRef}
+        style={{ left: cardPos.left, top: cardPos.top, width: cardW, maxHeight: vh - margin * 2 }}
+        data-testid="tour-card"
+      >
+        <div className="tour-top">
+          <span className="tour-step">第 {i + 1} / {steps.length} 步</span>
           <div className="grow" />
           <button className="btn ghost sm" onClick={onSkip}>
             跳过
           </button>
         </div>
-        <div className="tour-title">{step.title}</div>
-        <div className="tour-body">{step.body}</div>
-        {step.actionText && (
-          <div className="tour-action">
-            <span className={step.done ? 'okdot' : 'dotpulse'} />
-            <span>{step.actionText}</span>
-            <div className="grow" />
-            <span className={'tour-state ' + (step.done ? 'ok' : 'wait')}>{step.done ? '✅ 已完成' : '还没完成'}</span>
-          </div>
-        )}
-        {step.note && (
-          <div className={`tour-note ${step.note.kind}`}>
-            {step.note.kind === 'warn' ? '⚠️ ' : step.note.kind === 'ok' ? '✅ ' : '💡 '}
-            {step.note.text}
-          </div>
-        )}
-        <div className="tour-foot">
-          <div className="tour-dots">
-            {steps.map((_, k) => (
-              <i key={k} className={k === i ? 'on' : k < i ? 'done' : ''} />
-            ))}
-          </div>
-          <div className="grow" />
-          {i > 0 && (
-            <button className="btn sm" onClick={() => setI(i - 1)}>
-              上一步
-            </button>
-          )}
-          {step.action && !step.done && step.canClear && (
-            <button className="btn sm" onClick={onClear} title="把编辑器清空重来">
-              清空重来
-            </button>
-          )}
-          {step.action && !step.done ? (
-            <button className="btn primary sm" onClick={() => onAction?.(step)} data-testid="tour-action">
-              {step.helpText || '点这里，我帮你做'}
-            </button>
-          ) : (
-            <button
-              className="btn primary sm"
-              onClick={() => (last ? onFinish?.() : setI(i + 1))}
-              data-testid="tour-next"
-            >
-              {last ? step.finishText || '完成' : '下一步'}
-            </button>
-          )}
+
+        <div className="tour-main">
+          <div className="tour-title">{step.title}</div>
+          <div className="tour-body">{step.body}</div>
         </div>
-        {step.done && !last && (
-          <div className="tour-done">
-            <span className="okdot" />
-            {step.doneHint || '做对了，正在进入下一步…'}
+
+        <div className="tour-side">
+          {step.actionText && (
+            <div className="tour-action">
+              <span className={step.done ? 'okdot' : 'dotpulse'} />
+              <span>{step.actionText}</span>
+            </div>
+          )}
+          {step.actionText && <div className={'tour-state ' + (step.done ? 'ok' : 'wait')}>{step.done ? '✅ 已完成' : '还没完成'}</div>}
+          {step.note && (
+            <div className={`tour-note ${step.note.kind}`}>
+              {step.note.kind === 'warn' ? '⚠️ ' : step.note.kind === 'ok' ? '✅ ' : '💡 '}
+              {step.note.text}
+            </div>
+          )}
+          {step.done && !last && (
+            <div className="tour-done">
+              <span className="okdot" />
+              {step.doneHint || '做对了，正在进入下一步…'}
+            </div>
+          )}
+          <div className="tour-foot">
+            <div className="tour-dots">
+              {steps.map((_, k) => (
+                <i key={k} className={k === i ? 'on' : k < i ? 'done' : ''} />
+              ))}
+            </div>
+            <div className="grow" />
+            {i > 0 && (
+              <button className="btn sm" onClick={() => setI(i - 1)}>
+                上一步
+              </button>
+            )}
+            {step.action && !step.done && step.canClear && (
+              <button className="btn sm" onClick={onClear} title="把编辑器清空重来">
+                清空重来
+              </button>
+            )}
+            {step.action && !step.done ? (
+              <button className="btn primary sm" onClick={() => onAction?.(step)} data-testid="tour-action">
+                {step.helpText || '点这里，我帮你做'}
+              </button>
+            ) : (
+              <button className="btn primary sm" onClick={() => (last ? onFinish?.() : setI(i + 1))} data-testid="tour-next">
+                {last ? step.finishText || '完成' : '下一步'}
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </>
   )

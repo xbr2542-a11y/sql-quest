@@ -1010,7 +1010,11 @@ tr.diff td { background: var(--bad-soft); }
   box-shadow: var(--shadow-lg);
   padding: 16px 16px 14px;
   animation: rise 0.22s ease-out;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
+.tour-card .tour-body { font-size: 13.5px; line-height: 1.75; }
+.tour-top { display: flex; align-items: center; margin-bottom: 8px; }
 .tour-head { display: flex; align-items: center; margin-bottom: 8px; }
 .tour-step {
   font-size: 11.5px;
@@ -1047,7 +1051,36 @@ tr.diff td { background: var(--bad-soft); }
   0% { box-shadow: 0 0 0 0 rgba(47, 109, 246, 0.5); }
   100% { box-shadow: 0 0 0 9px rgba(47, 109, 246, 0); }
 }
-.tour-foot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+/* 底部按钮吸底：正文再长也不会把按钮顶出屏幕 */
+.tour-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 10px;
+  position: sticky;
+  bottom: -14px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+/* 横向布局：左边正文、右边操作区并排，卡片整体变矮 */
+.tour-card.wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  grid-template-areas:
+    'top top'
+    'main side';
+  column-gap: 18px;
+  align-items: start;
+}
+.tour-card.wide .tour-top { grid-area: top; }
+.tour-card.wide .tour-main { grid-area: main; min-width: 0; }
+.tour-card.wide .tour-side { grid-area: side; min-width: 0; }
+.tour-card.wide .tour-foot { margin-top: 10px; bottom: 0; }
+.tour-card.wide .tour-action { margin-top: 0; }
+.tour-side { display: flex; flex-direction: column; gap: 8px; }
 .tour-dots { display: flex; gap: 4px; }
 .tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); display: block; }
 .tour-dots i.done { background: #a9c4fb; }
