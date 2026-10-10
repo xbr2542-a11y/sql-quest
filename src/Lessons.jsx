@@ -195,7 +195,7 @@ export default function Lessons({ db, lessons, startId, progress, onDoneLesson, 
             <button className="btn ghost sm" onClick={() => setText('')}>
               清空
             </button>
-            <button className="btn primary sm" onClick={run} data-testid="lesson-run">
+            <button className="btn primary sm" onClick={run} data-testid="lesson-run" disabled={!db}>
               <IconPlay width={12} height={12} />
               执行
             </button>

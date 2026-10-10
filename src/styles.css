@@ -663,6 +663,107 @@ tr.diff td { background: var(--bad-soft); }
 
 .loading { display: grid; place-items: center; height: 100%; color: var(--text-2); font-size: 14px; }
 
+/* 数据库按需加载时顶部的一条提示（不挡住页面） */
+.db-strip {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 66px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--brand-soft);
+  border: 1px solid #d5e2ff;
+  color: #33475f;
+  font-size: 12.5px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.db-strip .spin {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #b9cdf7;
+  border-top-color: var(--brand);
+  animation: spin 0.8s linear infinite;
+  flex: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 我的数据 ---------- */
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: linear-gradient(120deg, #f2f7ff, #ffffff 65%);
+  box-shadow: var(--shadow-sm);
+}
+.profile-hero .ph-rank { font-size: 22px; font-weight: 700; }
+.profile-hero .ph-salary { color: var(--gold); font-family: var(--mono); font-size: 15px; margin-top: 4px; }
+.profile-hero .ph-stats { display: flex; gap: 14px; margin-left: auto; flex-wrap: wrap; }
+.ph-stat { text-align: center; min-width: 56px; }
+.ph-stat b { display: block; font-size: 22px; font-family: var(--mono); color: var(--brand-2); }
+.ph-stat span { font-size: 12px; color: var(--text-3); }
+
+.ladder-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.ladder-row .lv-badge {
+  flex: none;
+  width: 28px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 2px 0;
+}
+.ladder-row.reached .lv-badge { background: var(--brand-soft); color: var(--brand-2); }
+.ladder-row.current .lv-badge { background: var(--brand); color: #fff; }
+.ladder-row .lv-title { flex: none; width: 132px; font-size: 13.5px; }
+.ladder-row.current .lv-title { font-weight: 700; }
+.ladder-row .lv-pay { flex: none; width: 76px; font-family: var(--mono); font-size: 12.5px; color: var(--text-2); }
+.ladder-row .lv-bar { flex: 1; height: 8px; min-width: 60px; background: var(--surface-3); border-radius: 999px; overflow: hidden; }
+.ladder-row .lv-bar i { display: block; height: 100%; background: linear-gradient(90deg, #a9c4fb, var(--brand)); }
+.ladder-row.reached .lv-bar i { background: linear-gradient(90deg, var(--brand), #1f57d6); }
+
+.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.skill-card { border: 1px solid var(--line); border-radius: 11px; padding: 12px 13px; background: var(--surface); }
+.skill-card .sk-head { display: flex; align-items: baseline; justify-content: space-between; }
+.skill-card .sk-name { font-size: 14px; font-weight: 700; }
+.skill-card .sk-stars { color: var(--gold); letter-spacing: 2px; font-size: 15px; margin: 4px 0 2px; display: flex; align-items: baseline; gap: 6px; }
+.skill-card .sk-stars .sk-num { color: var(--text-3); letter-spacing: 0; font-size: 11.5px; font-family: var(--mono); }
+.skill-card .sk-bar { height: 5px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin-top: 4px; }
+.skill-card .sk-bar i { display: block; height: 100%; background: linear-gradient(90deg, #a9c4fb, var(--brand)); }
+.skill-card .sk-desc { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+
+.wrong-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+.wrong-row:last-child { border-bottom: 0; }
+.wrong-row .wr-id { font-family: var(--mono); font-size: 12px; color: var(--brand-2); flex: none; }
+.wrong-row .wr-title { font-size: 13px; flex: none; }
+.wrong-row .wr-stage { font-size: 12px; color: var(--text-3); }
+.wrong-row .wr-due { font-size: 12.5px; color: var(--text-2); }
+.wrong-row .wr-due.now { color: var(--bad); font-weight: 600; }
+
+.lesson-progress { display: flex; gap: 6px; flex-wrap: wrap; }
+.lp-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.lp-dot.ok { background: var(--ok-soft); color: #0b7a51; }
+
 /* ---------- 白话文案里的代码与关键字 ---------- */
 .inline-code,
 .inline-kw {

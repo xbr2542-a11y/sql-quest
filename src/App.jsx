@@ -23,6 +23,7 @@ import LevelPlay from './LevelPlay.jsx'
 import Tutorial from './Tutorial.jsx'
 import Review from './Review.jsx'
 import Lessons from './Lessons.jsx'
+import Profile from './Profile.jsx'
 
 const REVIEW_BONUS = 15
 const REVIEW_BATCH = 3
@@ -47,11 +48,30 @@ export default function App() {
   const [toastText, setToastText] = React.useState('')
   const timer = React.useRef(null)
 
+  // 需要数据库的页面（其余页面不等它，首屏可以立刻出现）
+  const NEEDS_DB = { level: 1, lessons: 1, review: 1, sandbox: 1, dict: 1, tutorial: 1 }
+  const needDb = !!NEEDS_DB[route.page]
+
+  /**
+   * 数据库（SQLite 引擎 643KB + 练习数据 777KB）按需加载：
+   *  - 首页/地图不需要它 → 立刻渲染，不再白屏
+   *  - 进入需要的页面时优先加载；停留首页时在空闲后后台预热，
+   *    这样等用户点进关卡，数据通常已经准备好了
+   */
   React.useEffect(() => {
-    getDb()
-      .then(setDb)
-      .catch((e) => setDbErr(String(e?.message || e)))
-  }, [])
+    if (db || dbErr) return
+    let cancelled = false
+    const load = () =>
+      getDb()
+        .then((d) => !cancelled && setDb(d))
+        .catch((e) => !cancelled && setDbErr(String(e?.message || e)))
+    // 需要的页面立刻加载；不需要的页面等 400ms 再后台预热
+    const id = setTimeout(load, needDb ? 0 : 400)
+    return () => {
+      cancelled = true
+      clearTimeout(id)
+    }
+  }, [needDb, db, dbErr])
 
   React.useEffect(() => {
     saveProgress(progress)
@@ -64,12 +84,6 @@ export default function App() {
   }
 
   if (dbErr) return <div className="loading">数据加载失败：{dbErr}</div>
-  if (!db)
-    return (
-      <div className="loading">
-        <div>正在装配你的工位…（本地初始化 SQLite 数据库）</div>
-      </div>
-    )
 
   const rankInfo = rankOf(progress)
   const unlocked = unlockedSet(progress)
@@ -166,6 +180,7 @@ export default function App() {
         lessonsCount={lessonsDone(progress)}
         onReview={() => (queue.length ? setRoute({ page: 'review' }) : toast('现在没有要复盘的题，先去闯关吧'))}
         onLessons={() => setRoute({ page: 'lessons', start: 1 })}
+        onProfile={() => setRoute({ page: 'profile' })}
         onReset={() => {
           if (confirm('确定清空所有进度，从第一天重新入职吗？')) {
             setProgress(resetProgress())
@@ -243,6 +258,22 @@ export default function App() {
 
       {route.page === 'sandbox' && <Sandbox db={db} />}
       {route.page === 'dict' && <Dictionary db={db} />}
+
+      {route.page === 'profile' && (
+        <Profile
+          progress={progress}
+          onReview={() => (queue.length ? setRoute({ page: 'review' }) : toast('现在没有要复盘的题'))}
+          onLessons={() => setRoute({ page: 'lessons', start: 1 })}
+          toast={toast}
+        />
+      )}
+
+      {needDb && !db && (
+        <div className="db-strip" data-testid="db-loading">
+          <span className="spin" />
+          正在准备数据库（首次需要下载引擎和练习数据，约 1.4MB）…页面已经可以先看，准备好就能执行
+        </div>
+      )}
 
       <Toast text={toastText} />
     </div>

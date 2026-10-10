@@ -25,7 +25,8 @@ export function TopBar({
   wrongCount = 0,
   lessonsCount = 0,
   onReview,
-  onLessons
+  onLessons,
+  onProfile
 }) {
   return (
     <header className="topbar">
@@ -43,6 +44,13 @@ export function TopBar({
         >
           基础课
           {lessonsCount > 0 && <span className="done-badge">{lessonsCount}/14</span>}
+        </button>
+        <button
+          className={route.page === 'profile' ? 'on' : ''}
+          onClick={onProfile}
+          title="职级薪资、能力分布、待改进项"
+        >
+          我的数据
         </button>
         <button
           className={'review-btn' + (route.page === 'review' ? ' on' : '') + (dueCount > 0 ? ' alert' : '')}

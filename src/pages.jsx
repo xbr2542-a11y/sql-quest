@@ -331,6 +331,7 @@ export function Sandbox({ db }) {
   const [openTable, setOpenTable] = React.useState(null)
 
   const run = () => {
+    if (!db) return // 数据库还在加载时先不动
     const t0 = performance.now()
     try {
       setResult(runQuery(db, text))
@@ -371,7 +372,7 @@ export function Sandbox({ db }) {
             <button className="btn ghost sm" onClick={() => setText('')}>
               清空
             </button>
-            <button className="btn primary sm" onClick={run}>
+            <button className="btn primary sm" onClick={run} disabled={!db}>
               <IconPlay width={12} height={12} />
               执行
             </button>

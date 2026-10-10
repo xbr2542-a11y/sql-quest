@@ -172,7 +172,7 @@ export default function Review({ db, queue, onPass, onFinish, onExit }) {
             <button className="btn ghost sm" onClick={() => setText('')}>
               清空
             </button>
-            <button className="btn primary sm" onClick={run} data-testid="review-run">
+            <button className="btn primary sm" onClick={run} data-testid="review-run" disabled={!db}>
               <IconPlay width={12} height={12} />
               执行
             </button>

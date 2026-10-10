@@ -347,7 +347,7 @@ export default function LevelPlay({ db, level, progress, onFinish, onWrong, onBa
             <button className="btn ghost sm" onClick={() => setText('')}>
               清空
             </button>
-            <button className="btn primary sm" onClick={run} data-testid="run">
+            <button className="btn primary sm" onClick={run} data-testid="run" disabled={!db}>
               <IconPlay width={12} height={12} />
               执行
             </button>

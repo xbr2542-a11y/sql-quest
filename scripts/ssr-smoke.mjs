@@ -42,6 +42,7 @@ const variants = await server.ssrLoadModule('/src/variants.js')
 const lessonsMod = await server.ssrLoadModule('/src/lessons.js')
 const lessonsPage = await server.ssrLoadModule('/src/Lessons.jsx')
 const glossary = await server.ssrLoadModule('/src/glossary.js')
+const profilePage = await server.ssrLoadModule('/src/Profile.jsx')
 
 const p = { ...progress.emptyProgress(), stars: { 1: 3, 2: 2, 5: 3 }, bonus: 250, path: 'basic' }
 const rankInfo = progress.rankOf(p)
@@ -131,6 +132,26 @@ smoke('三段式提示', () =>
       used: 1,
       onUse: () => {},
       onInsert: () => {}
+    })
+  )
+)
+smoke('我的数据页（有进度）', () =>
+  renderToString(
+    React.createElement(profilePage.default, {
+      progress: { ...p, lessons: { 1: true, 2: true }, wrong: { 3: { n: 1, stage: 0, dueAt: Date.now() - 1000 } }, cleared: [1] },
+      onReview: () => {},
+      onLessons: () => {},
+      toast: () => {}
+    })
+  )
+)
+smoke('我的数据页（空状态）', () =>
+  renderToString(
+    React.createElement(profilePage.default, {
+      progress: progress.emptyProgress(),
+      onReview: () => {},
+      onLessons: () => {},
+      toast: () => {}
     })
   )
 )
