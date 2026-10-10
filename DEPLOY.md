@@ -1,5 +1,10 @@
 # 怎么让别人看到这个项目
 
+> **当前状态：已经部署好了。**
+> 源码仓库：https://github.com/xbr2542-a11y/sql-quest
+> 线上地址：https://xbr2542-a11y.github.io/sql-quest/
+> 部署方式：GitHub Pages + GitHub Actions，**推送到 `main` 分支就自动构建并发布**。详见文末「十、已经部署好了」。
+
 这个项目是**纯前端静态站点**：SQL 引擎（SQLite 编译成 WebAssembly）和 700KB 的练习数据都在浏览器里跑，**没有后端、没有数据库、没有服务器成本**。
 所以部署只需要把 `npm run build` 生成的 `dist/` 文件夹放到任何静态托管上就行。玩家的进度存在各自浏览器的 localStorage 里，互相独立。
 
@@ -263,3 +268,66 @@ npm run build && npm run preview   # 打包版：更快，但每次改完要重�
 - `LICENSE`：MIT 协议，开源直接用。
 - `.github/workflows/deploy.yml`：推到 `main` 就自动 **装依赖 → 生成数据 → 构建 → 跑自检 → 发布**。构建前会执行 `npm run test` 和 `npm run check`，坏版本发不上去。
 - `vite.config.js` 用相对路径（`base: './'`），所以部署到 GitHub Pages 的子路径（`用户名.github.io/仓库名/`）也能正常加载资源和数据文件。
+
+---
+
+## 十、已经部署好了（GitHub Pages + 自动更新）
+
+### 现状
+
+| 项目 | 值 |
+|---|---|
+| 源码仓库 | https://github.com/xbr2542-a11y/sql-quest |
+| 线上地址 | https://xbr2542-a11y.github.io/sql-quest/ |
+| 分支 | `main` |
+| 部署方式 | GitHub Actions → GitHub Pages（不需手动上传） |
+| 每次构建耗时 | 约 40 秒 |
+
+已验证：线上站点能正常打开、进入第一课、执行 SQL 返回 50 行、判定通过，无失败请求。国内**直连**也能打开（不挂代理）。
+
+### 怎么改，才会自动更新
+
+**你只要让 `main` 分支多一个提交，线上就会自动更新**，三种方式都算：
+
+1. **直接在 GitHub 网页上改**（不用装任何东西）
+   打开仓库 → 点开要改的文件 → 右上角铅笔图标 → 改完点 **Commit changes**。
+   约 1 分钟后线上就是新的。
+2. **让我在这台电脑上改**
+   我改完会 `git commit` + `git push`，同样自动发布。
+3. **别人提 PR**
+   合并进 `main` 也会自动发布。
+
+### 自动构建做了什么
+
+`.github/workflows/deploy.yml` 里定义的顺序：
+
+```
+npm ci → npm run seed（重新生成练习数据）→ npm run build
+      → npm run test（判定 60 项用例）
+      → npm run check（19 关参考 SQL）
+      → 发布到 GitHub Pages
+```
+
+**跑不过测试就不会发布**，所以坏版本发不上去。
+
+### 想改什么，改哪个文件
+
+| 想改的东西 | 文件 |
+|---|---|
+| 关卡题目、参考答案、提示 | `src/levels.js`、`src/hints.js` |
+| 零基础 14 节课的内容 | `src/lessons.js` |
+| 术语解释 | `src/glossary.js` |
+| 剧情对话与角色 | `src/story.js` |
+| 大白话讲解 | `src/explanations.js` |
+| 颜色、间距、样式 | `src/styles.css` |
+| 练习数据（用户/订单等） | `scripts/gen-seed.mjs` |
+
+改完（或改之前）最好在本机跑一遍 `npm run test`、`npm run check`，确认没弄坏。
+
+### 出问题怎么看
+
+打开仓库的 **Actions** 标签页，能看到每次构建的状态和完整日志。红色叉号点进去，最后几行就是报错原因。
+
+### 已知的无害警告
+
+构建日志里会有一条 "Node.js 20 is deprecated" 的提示——那是 GitHub 官方几个 action（checkout / setup-node / upload-artifact）自身的运行时说明，不影响构建结果，构建是成功的。等官方发布对应的新版本号时升级一下 action 版本即可。

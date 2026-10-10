@@ -3,6 +3,11 @@
 一个把 SQL 学习包装成「入职上班」的网页小游戏：接需求单、写真实 SQL、拿绩效评价和涨薪。
 所有 SQL 在浏览器本地由真实 SQLite 引擎执行，不需要后端、不联网也能玩。
 
+**在线体验**：https://xbr2542-a11y.github.io/sql-quest/
+**源码仓库**：https://github.com/xbr2542-a11y/sql-quest
+
+> 线上地址由 GitHub Pages 托管（推送即自动部署）。国内可访问，但 `*.github.io` 的稳定性看运营商；要稳定给国内用户用，请看 [DEPLOY.md](DEPLOY.md) 第九节。
+
 ## 跑起来
 
 ```bash
